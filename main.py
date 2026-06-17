@@ -1,16 +1,23 @@
+# import os
+# BOT_TOKEN = os.environ["BOT_TOKEN"]
+# CHANNEL_ID = os.environ["CHANNEL_ID"]
+# # BOT_TOKEN = "8230364770:AAHHo8PQayR3hje3AzzAILhKGcjxYLPjIcU"
+# # CHANNEL_ID = "-1003474021131"  # or numeric ID like -1001234567890
+# SEEN_FILE = "seen_articles.json"
+
+ 
+
 import feedparser
 import requests
 import json
 import os
-import schedule
 import time
 from datetime import datetime
 
-BOT_TOKEN = "8230364770:AAHHo8PQayR3hje3AzzAILhKGcjxYLPjIcU"
-CHANNEL_ID = "-1003474021131"  # or numeric ID like -1001234567890
+BOT_TOKEN = os.environ["BOT_TOKEN"]
+CHANNEL_ID = os.environ["CHANNEL_ID"]
 SEEN_FILE = "seen_articles.json"
 
-# --- Cyber news RSS sources ---
 RSS_FEEDS = [
     "https://feeds.feedburner.com/TheHackersNews",
     "https://www.bleepingcomputer.com/feed/",
@@ -45,9 +52,8 @@ def send_to_telegram(text):
 def format_message(entry, source_name):
     title = entry.get("title", "No title")
     link = entry.get("link", "")
-    summary = entry.get("summary", "")[:300]  # truncate
+    summary = entry.get("summary", "")[:300]
     published = entry.get("published", "")
-
     return (
         f"🔐 <b>{title}</b>\n\n"
         f"{summary}...\n\n"
@@ -63,28 +69,19 @@ def scrape_and_post():
         try:
             feed = feedparser.parse(feed_url)
             source_name = feed.feed.get("title", feed_url)
-
-            for entry in feed.entries[:5]:  # check latest 5 per feed
+            for entry in feed.entries[:5]:
                 link = entry.get("link", "")
                 if not link or link in seen:
                     continue
-
                 message = format_message(entry, source_name)
                 send_to_telegram(message)
                 seen.add(link)
                 new_count += 1
-                time.sleep(2)  # avoid hitting rate limits
-
+                time.sleep(2)
         except Exception as e:
             print(f"[ERROR] {feed_url}: {e}")
 
     save_seen(seen)
     print(f"[{datetime.now()}] Posted {new_count} new articles.")
 
-# --- Run immediately, then every 30 minutes ---
 scrape_and_post()
-schedule.every(30).minutes.do(scrape_and_post)
-
-while True:
-    schedule.run_pending()
-    time.sleep(1)
