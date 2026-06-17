@@ -1,9 +1,10 @@
 name: Cyber News Bot
 on:
   schedule:
-    - cron: '*/5 * * * *'  # every 30 min
-  workflow_dispatch:  # manual trigger button
-
+    - cron: "*/5 * * * *" # every 30 min
+  workflow_dispatch: # manual trigger button
+permissions:
+  contents: write
 jobs:
   scrape:
     runs-on: ubuntu-latest
@@ -12,11 +13,11 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - run: pip install -r requirements.txt
 
-      - run: python main.py  
+      - run: python main.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
