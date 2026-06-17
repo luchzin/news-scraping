@@ -1,8 +1,8 @@
 name: Cyber News Bot
 on:
   schedule:
-    - cron: "*/5 * * * *" # every 30 min
-  workflow_dispatch: # manual trigger button
+    - cron: "0 * * * *"
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
