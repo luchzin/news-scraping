@@ -69,9 +69,9 @@ USAGE_FILE = "gemini_usage.json"
 DRY_RUN = True
 
 # --- BRANDING / MESSAGE STYLE (edit these to match your channel) ---
-JOIN_TEXT = "JOIN us for cybersecurity awareness"
-CYBER_AWARE_LABEL = "Cyber Aware:"
-CYBER_AWARE_HANDLE = "@YourChannelHandle"
+JOIN_TEXT = "JOIN us for cybersecurity news"
+CYBER_AWARE_LABEL = "Cyber News:"
+CYBER_AWARE_HANDLE = "https://t.me/CambodiaCybersecurityHub"
 HASHTAGS = [
     "#SecuDemy",
     "#StaySafeOnlineCambodia",
