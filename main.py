@@ -66,7 +66,7 @@ USAGE_FILE = "gemini_usage.json"
 # --- TESTING SWITCHES ---
 # Set DRY_RUN = True to print messages instead of sending to Telegram.
 # Lower MAX_POSTS_PER_RUN while testing to avoid burning Gemini quota.
-DRY_RUN = True
+DRY_RUN = False
 
 # --- BRANDING / MESSAGE STYLE (edit these to match your channel) ---
 JOIN_TEXT = "JOIN us for cybersecurity news"
