@@ -41,8 +41,8 @@ from dotenv import load_dotenv
 load_dotenv()  # reads variables from a local .env file, if present
 
 # ─── CONFIG ────────────────────────────────────────────────
-BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID")
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+CHANNEL_ID = os.environ.get("CHANNEL_ID")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 SEEN_FILE = "seen_articles.json"
