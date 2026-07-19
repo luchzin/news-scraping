@@ -73,11 +73,6 @@ HASHTAGS = [
     "#DigitalEconomyKH",
 ]
 
-# Language section labels (shown above each block so readers can
-# jump straight to the language they want).
-KH_LABEL = "🇰🇭 ភាសាខ្មែរ"
-EN_LABEL = "🇬🇧 English"
-
 # Gemini is only used for the Khmer translation now — English is never
 # sent to Gemini at all. Set to False to skip Khmer entirely and post
 # English-only (useful for testing feeds/formatting/Telegram first).
@@ -246,16 +241,14 @@ def format_message(en_title, en_summary, kh_title, kh_summary, link, source_name
     kh_block = ""
     if kh_title or kh_summary:
         kh_block = (
-            f"{KH_LABEL}\n"
-            f"<b>{kh_title}</b>\n"
+            f"<b>{kh_title}</b>\n\n"
             f"{kh_summary}\n\n"
             f"┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n"
         )
 
     # English block
     en_block = (
-        f"{EN_LABEL}\n"
-        f"<b>{en_title}</b>\n"
+        f"<b>{en_title}</b>\n\n"
         f"{en_summary}"
     )
 
@@ -264,7 +257,6 @@ def format_message(en_title, en_summary, kh_title, kh_summary, link, source_name
         f"{en_block}\n\n"
         f"Read more:\n{link}\n\n"
         f"* {JOIN_TEXT} *\n"
-        f"----------------\n"
         f"{CYBER_AWARE_LABEL} {CYBER_AWARE_HANDLE}\n\n"
         f"{hashtags_block}"
     )
