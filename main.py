@@ -279,7 +279,7 @@ def send_to_telegram(text):
         "chat_id": CHANNEL_ID,
         "text": text,
         "parse_mode": "HTML",
-        "disable_web_page_preview": False,
+        "disable_web_page_preview": True,
     }
     try:
         r = requests.post(url, json=payload, timeout=15)
