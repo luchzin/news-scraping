@@ -59,7 +59,7 @@ GEMINI_DAILY_BUDGET = 150
 USAGE_FILE = "gemini_usage.json"
 
 # --- TESTING SWITCHES ---
-DRY_RUN = True
+DRY_RUN = False
 
 # --- BRANDING / MESSAGE STYLE (edit these to match your channel) ---
 JOIN_TEXT = "JOIN us for cybersecurity news"
