@@ -1,9 +1,9 @@
 """
-Cybersecurity News -> Telegram Bot (English + Khmer translation)
+Cybersecurity News -> Telegram Bot (Khmer + English translation)
 ------------------------------------------------------------------
 Pulls RSS feeds. English title/summary come straight from the feed
 (no Gemini needed for that). Gemini is used ONLY to produce a Khmer
-translation, which is posted alongside the English original.
+translation, which is posted ABOVE the English original.
 Includes a DRY_RUN mode for safe testing.
 
 SETUP (before running):
@@ -72,6 +72,11 @@ HASHTAGS = [
     "#ISACCambodia",
     "#DigitalEconomyKH",
 ]
+
+# Language section labels (shown above each block so readers can
+# jump straight to the language they want).
+KH_LABEL = "🇰🇭 ភាសាខ្មែរ"
+EN_LABEL = "🇬🇧 English"
 
 # Gemini is only used for the Khmer translation now — English is never
 # sent to Gemini at all. Set to False to skip Khmer entirely and post
@@ -225,7 +230,7 @@ Return only the 2 translated lines, nothing else."""
     return "", ""
 
 
-# ─── FORMAT MESSAGE (English + Khmer together) ─────────────
+# ─── FORMAT MESSAGE (Khmer block first, English block second) ─────
 def truncate_summary(text, limit=300):
     text = text.strip()
     if len(text) <= limit:
@@ -237,17 +242,26 @@ def truncate_summary(text, limit=300):
 def format_message(en_title, en_summary, kh_title, kh_summary, link, source_name):
     hashtags_block = "\n".join(HASHTAGS)
 
-    title_block = f"<b>{en_title}</b>"
-    if kh_title:
-        title_block += f"\n<b>{kh_title}</b>"
+    # Khmer block (only included if translation succeeded)
+    kh_block = ""
+    if kh_title or kh_summary:
+        kh_block = (
+            f"{KH_LABEL}\n"
+            f"<b>{kh_title}</b>\n"
+            f"{kh_summary}\n\n"
+            f"┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n"
+        )
 
-    summary_block = en_summary
-    if kh_summary:
-        summary_block += f"\n\n{kh_summary}"
+    # English block
+    en_block = (
+        f"{EN_LABEL}\n"
+        f"<b>{en_title}</b>\n"
+        f"{en_summary}"
+    )
 
     return (
-        f"{title_block}\n\n"
-        f"{summary_block}\n\n"
+        f"{kh_block}"
+        f"{en_block}\n\n"
         f"Read more:\n{link}\n\n"
         f"* {JOIN_TEXT} *\n"
         f"----------------\n"
