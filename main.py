@@ -263,14 +263,24 @@ def format_message(en_title, en_summary, kh_title, kh_summary, link, source_name
 
 
 # ─── SEND TO TELEGRAM ─────────────────────────────────────
-def send_to_telegram(text):
+def send_to_telegram(text, preview_url=None):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHANNEL_ID,
         "text": text,
         "parse_mode": "HTML",
-        "disable_web_page_preview": True,
     }
+
+    if preview_url:
+        # Show a preview, but pin it to the news article link specifically —
+        # not whichever URL happens to appear first (e.g. the channel handle).
+        payload["link_preview_options"] = {
+            "is_disabled": False,
+            "url": preview_url,
+            "prefer_large_media": True,
+        }
+    else:
+        payload["link_preview_options"] = {"is_disabled": True}
     try:
         r = requests.post(url, json=payload, timeout=15)
     except requests.exceptions.RequestException as e:
@@ -321,6 +331,7 @@ def scrape_and_post():
                 en_summary = truncate_summary(clean_html(raw_summary)[:500], 300)
 
                 kh_title, kh_summary = "", ""
+                translation_failed = False
 
                 if USE_GEMINI:
                     if not can_use_gemini(usage):
@@ -341,8 +352,24 @@ def scrape_and_post():
                             # Real quota exhaustion (not just a failed single translation)
                             quota_exceeded = True
                             kh_title, kh_summary = "", ""
+                        elif not kh_title and not kh_summary:
+                            # Translation attempt failed (rate limit / bad response) but
+                            # quota isn't necessarily exhausted — skip just this article.
+                            translation_failed = True
                         else:
                             kh_summary = truncate_summary(kh_summary, 300)
+
+                if quota_exceeded:
+                    # Leave it unseen so it's retried once quota is available again.
+                    print(f"[WARN] Skipping post — no Gemini quota available: {en_title}")
+                    continue
+
+                if translation_failed:
+                    # Per requirement: never post English-only. Leave it unseen so
+                    # it's retried on a later run.
+                    print(f"[WARN] Skipping post — Khmer translation failed: {en_title}")
+                    time.sleep(REQUEST_DELAY)
+                    continue
 
                 message = format_message(en_title, en_summary, kh_title, kh_summary, link, source_name)
 
@@ -351,7 +378,7 @@ def scrape_and_post():
                     print(message)
                     print("======================================\n")
                 else:
-                    send_to_telegram(message)
+                    send_to_telegram(message, preview_url=link)
 
                 seen.add(link)
                 new_count += 1
