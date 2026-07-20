@@ -26,12 +26,25 @@ TESTING FLOW:
 RECOMMENDED SCHEDULE (once ready to automate):
     Run hourly, 6 AM - 9 PM, MAX_POSTS_PER_RUN = 5 (already set below).
     ~96 Gemini calls/day, well under GEMINI_DAILY_BUDGET (150).
+
+IMPORTANT — Khmer guarantee:
+    With USE_GEMINI = True (the normal/production setting), a post is
+    NEVER sent without its Khmer translation. If Gemini fails for an
+    article (rate limit, bad response) or the daily budget/quota is
+    exhausted, that article is skipped for this run and left "unseen"
+    so it gets retried automatically on a later run — it is never
+    posted English-only.
+    The ONLY way to get English-only posts is to explicitly set
+    USE_GEMINI = False below (intended for testing feeds/formatting
+    only). The script now prints a loud warning at startup whenever
+    USE_GEMINI is False, so this can't happen by accident.
 """
 
 import feedparser
 import requests
 import json
 import os
+import sys
 import time
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -41,8 +54,8 @@ from dotenv import load_dotenv
 load_dotenv()  # reads variables from a local .env file, if present
 
 # ─── CONFIG ────────────────────────────────────────────────
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-CHANNEL_ID = os.environ.get("CHANNEL_ID")
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 SEEN_FILE = "seen_articles.json"
@@ -59,7 +72,7 @@ GEMINI_DAILY_BUDGET = 150
 USAGE_FILE = "gemini_usage.json"
 
 # --- TESTING SWITCHES ---
-DRY_RUN = True
+DRY_RUN = False
 
 # --- BRANDING / MESSAGE STYLE (edit these to match your channel) ---
 JOIN_TEXT = "JOIN us for cybersecurity news"
@@ -76,6 +89,8 @@ HASHTAGS = [
 # Gemini is only used for the Khmer translation now — English is never
 # sent to Gemini at all. Set to False to skip Khmer entirely and post
 # English-only (useful for testing feeds/formatting/Telegram first).
+# NOTE: leaving this False in a live/scheduled run means EVERY post will
+# be English-only. A startup warning below makes this hard to miss.
 USE_GEMINI = True
 
 RSS_FEEDS = [
@@ -95,6 +110,36 @@ RSS_FEEDS = [
 client = None
 if USE_GEMINI and GEMINI_API_KEY:
     client = genai.Client(api_key=GEMINI_API_KEY)
+
+
+# ─── STARTUP SAFETY CHECKS ─────────────────────────────────
+def startup_checks():
+    """Loud, hard-to-miss warnings for config states that change posting
+    behavior in a way that's easy to forget about."""
+    print("=" * 60)
+    if not USE_GEMINI:
+        print("[!!!] USE_GEMINI = False")
+        print("[!!!] EVERY post from this run will be ENGLISH-ONLY.")
+        print("[!!!] No Khmer translation will be attempted at all.")
+        print("[!!!] This is intended for testing feeds/formatting only.")
+        print("[!!!] Set USE_GEMINI = True for normal/production runs.")
+    elif not GEMINI_API_KEY:
+        print("[!!!] USE_GEMINI = True but GEMINI_API_KEY is missing.")
+        print("[!!!] Gemini calls will fail immediately, and per the")
+        print("[!!!] skip-on-failure logic, NOTHING will be posted at all")
+        print("[!!!] until a valid key is set in your .env file.")
+    else:
+        print("[OK] USE_GEMINI = True and GEMINI_API_KEY is set.")
+        print("[OK] Posts will include Khmer + English, or be skipped")
+        print("[OK] (and retried later) if translation isn't available.")
+
+    if DRY_RUN:
+        print("[INFO] DRY_RUN = True — messages will be printed, not sent to Telegram.")
+    else:
+        print("[INFO] DRY_RUN = False — messages WILL be posted to Telegram.")
+        if not BOT_TOKEN or not CHANNEL_ID:
+            print("[!!!] BOT_TOKEN / CHANNEL_ID not set — posting will fail.")
+    print("=" * 60 + "\n")
 
 
 # ─── SEEN ARTICLES ────────────────────────────────────────
@@ -298,7 +343,7 @@ def send_to_telegram(text, preview_url=None):
 def scrape_and_post():
     if not DRY_RUN and (not BOT_TOKEN or not CHANNEL_ID):
         print("[FATAL] BOT_TOKEN / CHANNEL_ID not set. Set them or enable DRY_RUN.")
-        return
+        return 0
 
     seen = load_seen()
     usage = load_usage()
@@ -339,7 +384,7 @@ def scrape_and_post():
                     else:
                         if not quota_checked:
                             if not check_quota():
-                                return
+                                return 0
                             record_gemini_call(usage)
                             quota_checked = True
                             time.sleep(REQUEST_DELAY)
@@ -399,12 +444,15 @@ def scrape_and_post():
           f"{'(DRY RUN) ' if DRY_RUN else ''}Posted {new_count} article(s).")
 
     if quota_exceeded:
-        print("[WARN] Gemini quota exhausted or budget reached. Remaining articles posted English-only.")
+        print("[WARN] Gemini quota exhausted or budget reached. Remaining articles were skipped and will be retried later.")
 
     if new_count == 0:
         print("[INFO] No new articles found — nothing to post today.")
 
+    return new_count
+
 
 if __name__ == "__main__":
+    startup_checks()
     check_feeds()
     scrape_and_post()
