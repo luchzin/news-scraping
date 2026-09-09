@@ -24,17 +24,18 @@ jobs:
       - name: Run scraper
         working-directory: news-scraping_telegram
         env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python main.py
 
-      - name: Save seen articles
+      - name: Save seen articles and usage
         run: |
           git config user.email "bot@github.com"
           git config user.name "GitHub Bot"
-          git add news-scraping_telegram/seen_articles.json
+          git add news-scraping_telegram/seen_articles.json news-scraping_telegram/gemini_usage.json
           if ! git diff --cached --quiet; then
-            git commit -m "Update seen articles [skip ci]"
+            git commit -m "Update seen articles and usage [skip ci]"
             git pull --rebase origin main
             git push
           fi
