@@ -3,3 +3,4 @@ requests
 lxml
 feedparser
 python-dateutil
+google-genai
