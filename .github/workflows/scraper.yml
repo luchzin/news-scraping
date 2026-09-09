@@ -1,31 +1,40 @@
 name: Cyber News Bot
+
 on:
   schedule:
     - cron: "0 * * * *"
   workflow_dispatch:
+
 permissions:
   contents: write
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: pip install -r news-scraping_telegram/requirements.txt
 
-      - run: python main.py
+      - name: Run scraper
+        working-directory: news-scraping_telegram
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+        run: python main.py
 
       - name: Save seen articles
         run: |
           git config user.email "bot@github.com"
           git config user.name "GitHub Bot"
-          git add seen_articles.json
-          git diff --cached --quiet || git commit -m "Update seen articles"
-          git push
+          git add news-scraping_telegram/seen_articles.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update seen articles [skip ci]"
+            git pull --rebase origin main
+            git push
+          fi
