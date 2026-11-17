@@ -2,24 +2,43 @@ name: Cyber News Bot
 
 on:
   schedule:
-    - cron: "0 * * * *"
+    - cron: "0 * * * *"   # every hour (UTC)
   workflow_dispatch:
 
 permissions:
   contents: write
 
+# Never let two runs overlap (prevents push conflicts and double posting)
+concurrency:
+  group: cyber-news-bot
+  cancel-in-progress: false
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    timeout-minutes: 20
 
-      - uses: actions/setup-python@v5
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: news-scraping_telegram/requirements.txt
 
       - name: Install dependencies
         run: pip install -r news-scraping_telegram/requirements.txt
+
+      - name: Make sure state files exist
+        working-directory: news-scraping_telegram
+        run: |
+          [ -f seen_articles.json ] || echo "[]" > seen_articles.json
+          [ -f gemini_usage.json ]  || echo "{}" > gemini_usage.json
 
       - name: Run scraper
         working-directory: news-scraping_telegram
@@ -29,13 +48,36 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python main.py
 
+      # Runs even if the scraper crashed halfway, so articles already
+      # posted are still remembered and not sent again next hour.
       - name: Save seen articles and usage
+        if: always()
         run: |
-          git config user.email "bot@github.com"
-          git config user.name "GitHub Bot"
-          git add news-scraping_telegram/seen_articles.json news-scraping_telegram/gemini_usage.json
-          if ! git diff --cached --quiet; then
-            git commit -m "Update seen articles and usage [skip ci]"
-            git pull --rebase origin main
-            git push
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+
+          FILES="news-scraping_telegram/seen_articles.json news-scraping_telegram/gemini_usage.json"
+
+          # -f because these files are listed in .gitignore
+          git add -f $FILES
+
+          if git diff --cached --quiet; then
+            echo "No changes to save."
+            exit 0
           fi
+
+          git commit -m "Update seen articles and usage [skip ci]"
+
+          # Retry push a few times in case main moved meanwhile
+          for i in 1 2 3; do
+            if git pull --rebase -X theirs origin main && git push origin HEAD:main; then
+              echo "Pushed successfully."
+              exit 0
+            fi
+            echo "Push failed (attempt $i), retrying..."
+            git rebase --abort 2>/dev/null || true
+            sleep 5
+          done
+
+          echo "Could not push after 3 attempts."
+          exit 1
